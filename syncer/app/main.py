@@ -20,18 +20,25 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
-def create_app(config: Config | None = None) -> FastAPI:
+def create_app(
+    config: Config | None = None,
+    *,
+    repo: Repository | None = None,
+    webdav: WebDavClient | None = None,
+    graph: PolyGraphClient | None = None,
+    scheduler: Scheduler | None = None,
+) -> FastAPI:
     cfg = config or Config.from_env()
-    repo = Repository(cfg.postgres_dsn)
-    webdav = WebDavClient(
+    repo = repo or Repository(cfg.postgres_dsn)
+    webdav = webdav or WebDavClient(
         cfg.nextcloud_url, cfg.nextcloud_user, cfg.nextcloud_password
     )
-    graph = PolyGraphClient(
+    graph = graph or PolyGraphClient(
         cfg.polygraphrag_url,
         cfg.polygraphrag_api_token,
         ingest_timeout=cfg.ingest_timeout,
     )
-    scheduler = Scheduler(cfg, repo, webdav, graph)
+    scheduler = scheduler or Scheduler(cfg, repo, webdav, graph)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
