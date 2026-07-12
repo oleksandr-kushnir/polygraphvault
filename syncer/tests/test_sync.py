@@ -231,3 +231,46 @@ def test_nested_subfolder_keeps_recursive_source_path():
     result = cycle(webdav, graph, repo)
     assert result.ingested == 1
     assert graph.ingests[0][1] == "Projects/Alpha/legal/contracts/msa.md"
+
+
+def test_min_files_floor_degrades_and_defers_deletes():
+    webdav = FakeWebDav({"a.md": (b"a", "e1"), "b.md": (b"b", "e2")})
+    graph, repo = FakeGraph(), FakeRepo()
+    mapping = dict(MAPPING, min_files=2)
+    run_cycle(mapping, webdav, graph, repo, now=0, delete_grace=0, max_bytes=1_000_000)
+    del webdav.files["a.md"]
+    result = run_cycle(mapping, webdav, graph, repo, now=10, delete_grace=0, max_bytes=1_000_000)
+    assert result.health_degraded
+    assert result.deleted == 0
+    assert graph.deletes == []
+
+
+def test_bulk_drop_over_max_delete_fraction_degrades():
+    webdav = FakeWebDav({f"f{i}.md": (b"x", f"e{i}") for i in range(4)})
+    graph, repo = FakeGraph(), FakeRepo()
+    mapping = dict(MAPPING, max_delete_fraction=0.5)
+    run_cycle(mapping, webdav, graph, repo, now=0, delete_grace=0, max_bytes=1_000_000)
+    for name in ("f0.md", "f1.md", "f2.md"):
+        del webdav.files[name]
+    result = run_cycle(mapping, webdav, graph, repo, now=10, delete_grace=0, max_bytes=1_000_000)
+    assert result.health_degraded
+    assert result.deleted == 0
+    assert graph.deletes == []
+
+
+def test_stale_mapping_version_defers_delete():
+    class VersionRepo(FakeRepo):
+        current = True
+
+        def mapping_is_current(self, mapping_id, version):
+            return self.current
+
+    webdav = FakeWebDav({"guide.md": (b"hello", "e1")})
+    graph, repo = FakeGraph(), VersionRepo()
+    cycle(webdav, graph, repo)
+    repo.current = False
+    webdav.files.clear()
+    result = cycle(webdav, graph, repo, now=1000, grace=0)
+    assert result.deleted == 0
+    assert result.deferred == 1
+    assert graph.deletes == []
