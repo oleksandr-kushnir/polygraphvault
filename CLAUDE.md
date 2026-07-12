@@ -52,7 +52,8 @@ VPS stack (adds Caddy TLS + security-hardened overrides):
 docker compose -f docker-compose.yml -f docker-compose.vps.yml up -d
 ```
 
-There is no linter/formatter config checked in; match the existing style (see below).
+Lint/type tooling lives in `syncer/pyproject.toml`: run `ruff check .` and `mypy app` from
+`syncer/` before committing (CI enforces both).
 
 ## Architecture
 
@@ -60,7 +61,7 @@ There is no linter/formatter config checked in; match the existing style (see be
 
 A **mapping** is a row in the syncer's Postgres DB, created/changed only through the syncer's
 token-protected HTTP API (`POST /mappings`, `PATCH`, `/run`, `/enable`, `/disable`, `DELETE`
-archives, `/restore`). No folder-to-workspace relationship is ever read from environment variables.
+archives, `/restore`; read-only `GET /mappings/{id}/state` and `/events`). No folder-to-workspace relationship is ever read from environment variables.
 Environment variables are reserved for deployment-wide concerns (DB/WebDAV credentials, service
 URLs, API tokens, poll interval, size cap, timeouts, delete grace).
 

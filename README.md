@@ -33,8 +33,10 @@ Current local endpoints (configured in `.env` to coexist with the other projects
 - Syncer API/docs: `http://127.0.0.1:19630/docs`
 - Postgres: `127.0.0.1:15432`
 
-The syncer API requires `Authorization: Bearer <SYNCER_API_TOKEN>`. PolyGraphRAG auth is enabled
-when `POLYGRAPHRAG_API_TOKENS` is non-empty.
+The syncer API requires `Authorization: Bearer <SYNCER_API_TOKEN>` whenever `SYNCER_API_TOKEN` is
+set. An empty token disables syncer auth entirely — acceptable only for loopback local development;
+the VPS override refuses to start without one. PolyGraphRAG auth is enabled when
+`POLYGRAPHRAG_API_TOKENS` is non-empty.
 
 ## Runtime mapping example
 
@@ -66,6 +68,8 @@ Invoke-RestMethod http://127.0.0.1:19630/mappings -Headers $headers
 Invoke-RestMethod http://127.0.0.1:19630/mappings/1/run -Method Post -Headers $headers
 Invoke-RestMethod http://127.0.0.1:19630/mappings/1/disable -Method Post -Headers $headers
 Invoke-RestMethod http://127.0.0.1:19630/mappings/1/enable -Method Post -Headers $headers
+Invoke-RestMethod http://127.0.0.1:19630/mappings/1/state -Headers $headers
+Invoke-RestMethod "http://127.0.0.1:19630/mappings/1/events?limit=50" -Headers $headers
 ```
 
 Archiving a mapping retains its graph and ownership state:

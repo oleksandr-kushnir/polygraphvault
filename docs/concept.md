@@ -63,6 +63,9 @@ API contract:
 - `GET /mappings`
 - `POST /mappings`
 - `GET /mappings/{id}`
+- `GET /mappings/{id}/state` (per-file sync status, doc ids, errors, pending deletes)
+- `GET /mappings/{id}/events?limit=N` (recent audit events, newest first; readable for archived
+  mappings)
 - `PATCH /mappings/{id}`
 - `DELETE /mappings/{id}` (archives the mapping; ownership state is retained and graph data is not
   purged)
@@ -74,6 +77,8 @@ API contract:
 Version 1 enforces one mapping per PolyGraphRAG workspace. Creating a mapping verifies that the
 target workspace exists and is empty; with `create_workspace=true`, the syncer creates it. This
 prevents two mappings—or a mapping and manual uploads—from claiming/deleting the same graph rows.
+Workspace exclusivity is the enforced overlap rule; the same Nextcloud folder may deliberately feed
+multiple workspaces, each with its own independent copies.
 After a mapping owns a workspace, documents must enter it through that mapping.
 
 Scope and enable changes take effect without recreating a container. Ownership/citation fields
@@ -105,6 +110,10 @@ with `handbook.pdf` and `legal/contracts/msa.docx` retained as distinct relative
 Uploads supply `source_path=<relative file path>` and `path_root=<mapping path_root>`. The syncer
 polls the returned job until `done` or a terminal failure and only then marks the file synced.
 Deletes use the exact `doc_id` and therefore do not depend on filenames.
+
+A file whose ingest failed and whose source etag is unchanged is retried with exponential backoff
+(60 s doubling per recorded retry, capped at one hour) so a permanently failing document cannot
+burn provider cost every poll cycle. A source change (new etag) retries immediately.
 
 Replacement is deliberately upload-first. If replacement ingestion fails, the old graph document
 remains queryable and its ownership metadata is retained while the new source etag/error is marked
