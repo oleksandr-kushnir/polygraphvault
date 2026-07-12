@@ -13,6 +13,9 @@ from app.webdav import SENTINEL
 
 log = logging.getLogger("nc-rag-sync")
 
+RETRY_BACKOFF_BASE_SECS = 60.0
+RETRY_BACKOFF_CAP_SECS = 3600.0
+
 
 @dataclass
 class CycleResult:
@@ -173,6 +176,20 @@ def run_cycle(
             and cached.get("content_hash") == indexed.content_hash
         ):
             continue
+
+        if (
+            cached
+            and cached.get("sync_status") == "failed"
+            and cached.get("pending_etag") == remote.etag
+            and cached.get("updated_epoch") is not None
+        ):
+            wait = min(
+                RETRY_BACKOFF_CAP_SECS,
+                RETRY_BACKOFF_BASE_SECS * (2 ** min(int(cached.get("retry_count") or 0), 6)),
+            )
+            if now - float(cached["updated_epoch"]) < wait:
+                result.deferred += 1
+                continue
 
         try:
             data, read_etag = webdav.read(mapping["nextcloud_path"], path)

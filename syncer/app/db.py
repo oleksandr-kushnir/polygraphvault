@@ -143,7 +143,8 @@ class Repository:
     def get_state(self, mapping_id: int) -> dict[str, dict[str, Any]]:
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT *, extract(epoch FROM pending_delete_since) AS pending_epoch "
+                "SELECT *, extract(epoch FROM pending_delete_since) AS pending_epoch, "
+                "extract(epoch FROM updated_at) AS updated_epoch "
                 "FROM sync_state WHERE mapping_id=%s",
                 (mapping_id,),
             ).fetchall()

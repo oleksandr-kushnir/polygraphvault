@@ -320,3 +320,39 @@ def test_foreign_prefix_graph_row_degrades_health():
     assert result.health_degraded
     assert result.deleted == 0
     assert graph.deletes == []
+
+
+def failed_row(pending_etag, retry_count, updated_epoch):
+    return {
+        "rel_path": "guide.md",
+        "remote_etag": None,
+        "content_hash": None,
+        "doc_id": None,
+        "superseded_doc_id": None,
+        "sync_status": "failed",
+        "retry_count": retry_count,
+        "last_error": "boom",
+        "pending_epoch": None,
+        "pending_etag": pending_etag,
+        "pending_hash": "h",
+        "updated_epoch": updated_epoch,
+    }
+
+
+def test_failed_ingest_backs_off_then_retries():
+    webdav = FakeWebDav({"guide.md": (b"data", "e9")})
+    graph, repo = FakeGraph(), FakeRepo()
+    repo.state["guide.md"] = failed_row("e9", retry_count=3, updated_epoch=1000.0)
+    early = cycle(webdav, graph, repo, now=1100)  # window is 60 * 2**3 = 480s
+    assert early.ingested == 0
+    assert early.deferred == 1
+    late = cycle(webdav, graph, repo, now=1000 + 481)
+    assert late.ingested == 1
+
+
+def test_etag_change_bypasses_backoff():
+    webdav = FakeWebDav({"guide.md": (b"data", "e10")})
+    graph, repo = FakeGraph(), FakeRepo()
+    repo.state["guide.md"] = failed_row("e9", retry_count=6, updated_epoch=1000.0)
+    result = cycle(webdav, graph, repo, now=1001)
+    assert result.ingested == 1
