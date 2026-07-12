@@ -98,11 +98,19 @@ def run_cycle(
 
     paths = sorted(set(scoped) | set(state) | set(graph_index))
     for path in paths:
-        if path in oversize:
-            continue
         remote = scoped.get(path)
         cached = state.get(path)
         indexed = graph_index.get(path)
+
+        # A file that is present again (in scope or merely oversize) is not
+        # missing: its delete-grace clock must restart from zero if it
+        # disappears later.
+        present = remote is not None or path in oversize
+        if present and cached and cached.get("pending_epoch") is not None:
+            repo.clear_pending_delete(mapping_id, path)
+            cached["pending_epoch"] = None
+        if path in oversize:
+            continue
 
         if indexed and not cached:
             repo.event(

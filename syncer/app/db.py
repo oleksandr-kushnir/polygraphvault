@@ -251,6 +251,14 @@ class Repository:
                 (epoch, mapping_id, rel_path),
             )
 
+    def clear_pending_delete(self, mapping_id: int, rel_path: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "UPDATE sync_state SET pending_delete_since=NULL, updated_at=now() "
+                "WHERE mapping_id=%s AND rel_path=%s AND pending_delete_since IS NOT NULL",
+                (mapping_id, rel_path),
+            )
+
     def clear_pending_deletes(self, mapping_id: int) -> None:
         with self._connect() as conn:
             conn.execute(

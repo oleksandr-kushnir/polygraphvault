@@ -99,6 +99,10 @@ class FakeRepo:
     def set_pending_delete(self, mapping_id, path, epoch):
         self.state[path]["pending_epoch"] = epoch
 
+    def clear_pending_delete(self, mapping_id, path):
+        if path in self.state:
+            self.state[path]["pending_epoch"] = None
+
     def clear_pending_deletes(self, mapping_id):
         for row in self.state.values():
             row["pending_epoch"] = None
@@ -274,3 +278,31 @@ def test_stale_mapping_version_defers_delete():
     assert result.deleted == 0
     assert result.deferred == 1
     assert graph.deletes == []
+
+
+def test_reappearing_unchanged_file_resets_delete_grace():
+    webdav = FakeWebDav({"guide.md": (b"hello", "e1")})
+    graph, repo = FakeGraph(), FakeRepo()
+    cycle(webdav, graph, repo)
+    webdav.files.clear()
+    cycle(webdav, graph, repo, now=1000)
+    assert repo.state["guide.md"]["pending_epoch"] == 1000
+    webdav.files["guide.md"] = (b"hello", "e1")  # comes back, identical
+    cycle(webdav, graph, repo, now=1100)
+    assert repo.state["guide.md"]["pending_epoch"] is None
+    webdav.files.clear()
+    result = cycle(webdav, graph, repo, now=99999)  # disappears again much later
+    assert result.deleted == 0
+    assert result.deferred == 1
+
+
+def test_reappearing_oversize_file_resets_delete_grace():
+    webdav = FakeWebDav({"guide.md": (b"hello", "e1")})
+    graph, repo = FakeGraph(), FakeRepo()
+    cycle(webdav, graph, repo)
+    webdav.files.clear()
+    cycle(webdav, graph, repo, now=1000)
+    assert repo.state["guide.md"]["pending_epoch"] == 1000
+    webdav.files["guide.md"] = (b"h" * 50, "e2")  # returns above the size cap
+    run_cycle(MAPPING, webdav, graph, repo, now=1100, delete_grace=300, max_bytes=10)
+    assert repo.state["guide.md"]["pending_epoch"] is None
