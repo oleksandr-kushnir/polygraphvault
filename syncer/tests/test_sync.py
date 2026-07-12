@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+import time
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 from app.polygraph import GraphFile
-from app.sync import run_cycle
+from app.sync import Scheduler, run_cycle
 from app.webdav import SENTINEL, WebDavEntry
 
 
@@ -356,3 +358,27 @@ def test_etag_change_bypasses_backoff():
     repo.state["guide.md"] = failed_row("e9", retry_count=6, updated_epoch=1000.0)
     result = cycle(webdav, graph, repo, now=1001)
     assert result.ingested == 1
+
+
+def test_scheduler_survives_repo_outage_and_keeps_polling():
+    class FlakyRepo:
+        def __init__(self):
+            self.calls = 0
+
+        def list_mappings(self, enabled_only=True):
+            self.calls += 1
+            raise RuntimeError("db down")
+
+    config = SimpleNamespace(
+        poll_interval=0.01, delete_grace_secs=0.0, max_file_bytes=0,
+        canary_autocreate=True, events_retention_days=0.0,
+    )
+    repo = FlakyRepo()
+    scheduler = Scheduler(config, repo, None, None)
+    scheduler.start()
+    time.sleep(0.15)
+    try:
+        assert scheduler.is_alive()
+        assert repo.calls >= 2  # kept polling straight through the failures
+    finally:
+        scheduler.stop()

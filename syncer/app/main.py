@@ -95,9 +95,15 @@ def create_app(
             database = "ok"
         except Exception:
             database = "error"
-        if database != "ok":
+        scheduler_ok = scheduler.is_alive()
+        healthy = database == "ok" and scheduler_ok
+        if not healthy:
             response.status_code = 503
-        return {"status": "ok" if database == "ok" else "degraded", "database": database}
+        return {
+            "status": "ok" if healthy else "degraded",
+            "database": database,
+            "scheduler": "ok" if scheduler_ok else "dead",
+        }
 
     @application.get("/mappings", response_model=list[MappingView])
     def list_mappings():

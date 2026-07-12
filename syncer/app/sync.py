@@ -267,6 +267,9 @@ class Scheduler:
             self._pending.add(mapping_id)
         self._wake.set()
 
+    def is_alive(self) -> bool:
+        return bool(self._thread and self._thread.is_alive())
+
     def _take_mappings(self) -> list[dict[str, Any]]:
         with self._lock:
             pending = set(self._pending)
@@ -281,7 +284,12 @@ class Scheduler:
 
     def _loop(self) -> None:
         while not self._stop.is_set():
-            for mapping in self._take_mappings():
+            try:
+                mappings = self._take_mappings()
+            except Exception as exc:  # noqa: BLE001
+                log.warning("scheduler could not list mappings; retrying next tick: %s", exc)
+                mappings = []
+            for mapping in mappings:
                 if self._stop.is_set():
                     return
                 try:

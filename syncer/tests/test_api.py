@@ -138,12 +138,16 @@ class StubGraph:
 class StubScheduler:
     def __init__(self):
         self.requests = []
+        self.alive = True
 
     def start(self):
         pass
 
     def stop(self):
         pass
+
+    def is_alive(self):
+        return self.alive
 
     def request(self, mapping_id):
         self.requests.append(mapping_id)
@@ -242,3 +246,12 @@ def test_state_and_events_endpoints(api):
     assert events.status_code == 200
     assert [e["event_type"] for e in events.json()] == ["deleted"]
     assert client.get("/mappings/9999/events").status_code == 404
+
+
+def test_health_reports_scheduler_death(api):
+    client, _, scheduler = api
+    assert client.get("/health").json()["scheduler"] == "ok"
+    scheduler.alive = False
+    degraded = client.get("/health")
+    assert degraded.status_code == 503
+    assert degraded.json()["scheduler"] == "dead"
