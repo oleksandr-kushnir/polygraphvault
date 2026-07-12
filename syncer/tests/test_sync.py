@@ -429,3 +429,30 @@ def test_crashed_pending_ingest_adopts_completed_job_without_reupload():
     assert graph.ingests == []
     assert repo.state["guide.md"]["doc_id"] == "doc-done"
     assert repo.state["guide.md"]["sync_status"] == "synced"
+
+
+def test_event_pruning_runs_once_per_interval_and_can_be_disabled():
+    class PruneRepo:
+        def __init__(self):
+            self.pruned = []
+
+        def prune_events(self, days):
+            self.pruned.append(days)
+            return 3
+
+    def config(days):
+        return SimpleNamespace(
+            poll_interval=0.01, delete_grace_secs=0.0, max_file_bytes=0,
+            canary_autocreate=True, events_retention_days=days,
+        )
+
+    repo = PruneRepo()
+    scheduler = Scheduler(config(30.0), repo, None, None)
+    scheduler._maybe_prune_events()
+    scheduler._maybe_prune_events()
+    assert repo.pruned == [30.0]  # second call inside the 24h window is a no-op
+
+    disabled_repo = PruneRepo()
+    disabled = Scheduler(config(0.0), disabled_repo, None, None)
+    disabled._maybe_prune_events()
+    assert disabled_repo.pruned == []

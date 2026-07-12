@@ -253,6 +253,8 @@ def run_cycle(
 
 
 class Scheduler:
+    PRUNE_INTERVAL_SECS = 24 * 3600.0
+
     def __init__(self, config, repo, webdav, graph) -> None:
         self._config = config
         self._repo = repo
@@ -263,6 +265,7 @@ class Scheduler:
         self._pending: set[int] = set()
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
+        self._last_prune = 0.0
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -284,6 +287,21 @@ class Scheduler:
     def is_alive(self) -> bool:
         return bool(self._thread and self._thread.is_alive())
 
+    def _maybe_prune_events(self) -> None:
+        days = float(self._config.events_retention_days)
+        if days <= 0:
+            return
+        now = time.monotonic()
+        if self._last_prune and now - self._last_prune < self.PRUNE_INTERVAL_SECS:
+            return
+        self._last_prune = now
+        try:
+            removed = self._repo.prune_events(days)
+            if removed:
+                log.info("pruned %s sync events older than %s days", removed, days)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("event pruning failed; will retry next interval: %s", exc)
+
     def _take_mappings(self) -> list[dict[str, Any]]:
         with self._lock:
             pending = set(self._pending)
@@ -298,6 +316,7 @@ class Scheduler:
 
     def _loop(self) -> None:
         while not self._stop.is_set():
+            self._maybe_prune_events()
             try:
                 mappings = self._take_mappings()
             except Exception as exc:  # noqa: BLE001

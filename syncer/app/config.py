@@ -19,6 +19,7 @@ class Config:
     max_file_bytes: int
     ingest_timeout: float
     canary_autocreate: bool
+    events_retention_days: float
 
     @classmethod
     def from_env(cls) -> Config:
@@ -50,4 +51,5 @@ class Config:
             ingest_timeout=float(os.environ.get("SYNC_INGEST_TIMEOUT", "900")),
             canary_autocreate=os.environ.get("SYNC_CANARY_AUTOCREATE", "true").lower()
             in {"1", "true", "yes", "on"},
+            events_retention_days=float(os.environ.get("SYNC_EVENTS_RETENTION_DAYS", "90")),
         )

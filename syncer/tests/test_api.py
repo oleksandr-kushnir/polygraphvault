@@ -26,6 +26,7 @@ def make_config() -> Config:
         max_file_bytes=1_000_000,
         ingest_timeout=1.0,
         canary_autocreate=True,
+        events_retention_days=90.0,
     )
 
 

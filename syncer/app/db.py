@@ -286,6 +286,14 @@ class Repository:
                 (mapping_id,),
             )
 
+    def prune_events(self, older_than_days: float) -> int:
+        with self._connect() as conn:
+            result = conn.execute(
+                "DELETE FROM sync_events WHERE ts < now() - make_interval(days => %s)",
+                (older_than_days,),
+            )
+            return result.rowcount
+
     def delete_state(self, mapping_id: int, rel_path: str) -> None:
         with self._connect() as conn:
             conn.execute(
