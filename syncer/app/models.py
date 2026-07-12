@@ -96,3 +96,23 @@ class MappingView(BaseModel):
 class RunAccepted(BaseModel):
     status: str = "scheduled"
     mapping_id: int
+
+
+class FileStateView(BaseModel):
+    rel_path: str
+    sync_status: str
+    doc_id: Optional[str] = None
+    content_hash: Optional[str] = None
+    remote_etag: Optional[str] = None
+    retry_count: int = 0
+    last_error: Optional[str] = None
+    pending_delete_since: Optional[datetime] = None
+    updated_at: datetime
+
+
+class EventView(BaseModel):
+    id: int
+    ts: datetime
+    event_type: str
+    rel_path: Optional[str] = None
+    detail: Optional[dict] = None

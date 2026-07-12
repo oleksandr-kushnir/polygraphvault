@@ -10,7 +10,9 @@ from fastapi.responses import JSONResponse
 
 from app.config import Config
 from app.db import Repository
-from app.models import MappingCreate, MappingPatch, MappingView, RunAccepted
+from app.models import (
+    EventView, FileStateView, MappingCreate, MappingPatch, MappingView, RunAccepted,
+)
 from app.polygraph import PolyGraphClient
 from app.sync import Scheduler
 from app.webdav import WebDavClient
@@ -100,6 +102,17 @@ def create_app(
     @application.get("/mappings/{mapping_id}", response_model=MappingView)
     def read_mapping(mapping_id: int):
         return get_mapping(mapping_id)
+
+    @application.get("/mappings/{mapping_id}/state", response_model=list[FileStateView])
+    def read_mapping_state(mapping_id: int):
+        get_mapping(mapping_id)
+        return repo.list_state(mapping_id)
+
+    @application.get("/mappings/{mapping_id}/events", response_model=list[EventView])
+    def read_mapping_events(mapping_id: int, limit: int = 100):
+        if repo.get_mapping(mapping_id, include_archived=True) is None:
+            raise HTTPException(404, "mapping not found")
+        return repo.list_events(mapping_id, max(1, min(limit, 1000)))
 
     @application.post("/mappings", response_model=MappingView, status_code=201)
     def create_mapping(body: MappingCreate):

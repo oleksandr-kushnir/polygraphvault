@@ -40,6 +40,8 @@ class ApiRepo:
     def __init__(self):
         self.mappings: dict[int, dict] = {}
         self.state_counts: dict[int, int] = {}
+        self.state_rows: dict[int, list[dict]] = {}
+        self.event_rows: dict[int, list[dict]] = {}
         self._next = 1
 
     def init(self):
@@ -93,6 +95,13 @@ class ApiRepo:
 
     def count_state(self, mapping_id):
         return self.state_counts.get(mapping_id, 0)
+
+    def list_state(self, mapping_id):
+        return list(self.state_rows.get(mapping_id, []))
+
+    def list_events(self, mapping_id, limit=100):
+        rows = sorted(self.event_rows.get(mapping_id, []), key=lambda r: r["id"], reverse=True)
+        return rows[:limit]
 
 
 class StubWebDav:
@@ -210,3 +219,26 @@ def test_archive_restore_and_disabled_run(api):
     assert restored.status_code == 200
     client.post(f"/mappings/{mapping_id}/disable")
     assert client.post(f"/mappings/{mapping_id}/run").status_code == 409
+
+
+def test_state_and_events_endpoints(api):
+    client, repo, _ = api
+    mapping_id = client.post("/mappings", json=CREATE_BODY).json()["id"]
+    now = datetime.now(timezone.utc)
+    repo.state_rows[mapping_id] = [{
+        "rel_path": "guide.md", "sync_status": "synced", "doc_id": "doc-1",
+        "content_hash": "abc", "remote_etag": "e1", "retry_count": 0,
+        "last_error": None, "pending_delete_since": None, "updated_at": now,
+    }]
+    repo.event_rows[mapping_id] = [
+        {"id": 1, "ts": now, "event_type": "ingested", "rel_path": "guide.md", "detail": None},
+        {"id": 2, "ts": now, "event_type": "deleted", "rel_path": "old.md",
+         "detail": {"doc_id": "doc-0"}},
+    ]
+    state = client.get(f"/mappings/{mapping_id}/state")
+    assert state.status_code == 200
+    assert state.json()[0]["rel_path"] == "guide.md"
+    events = client.get(f"/mappings/{mapping_id}/events?limit=1")
+    assert events.status_code == 200
+    assert [e["event_type"] for e in events.json()] == ["deleted"]
+    assert client.get("/mappings/9999/events").status_code == 404

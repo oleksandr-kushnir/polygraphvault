@@ -55,6 +55,9 @@ CREATE TABLE IF NOT EXISTS sync_events (
   rel_path TEXT,
   detail JSONB
 );
+
+CREATE INDEX IF NOT EXISTS sync_events_mapping_id_id_idx
+  ON sync_events (mapping_id, id DESC);
 """
 
 
@@ -149,6 +152,23 @@ class Repository:
                 (mapping_id,),
             ).fetchall()
             return {row["rel_path"]: row for row in rows}
+
+    def list_state(self, mapping_id: int) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            return list(conn.execute(
+                "SELECT rel_path, sync_status, doc_id, content_hash, remote_etag, "
+                "retry_count, last_error, pending_delete_since, updated_at "
+                "FROM sync_state WHERE mapping_id=%s ORDER BY rel_path",
+                (mapping_id,),
+            ).fetchall())
+
+    def list_events(self, mapping_id: int, limit: int = 100) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            return list(conn.execute(
+                "SELECT id, ts, event_type, rel_path, detail FROM sync_events "
+                "WHERE mapping_id=%s ORDER BY id DESC LIMIT %s",
+                (mapping_id, limit),
+            ).fetchall())
 
     def upsert_state(
         self,
