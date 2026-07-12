@@ -165,11 +165,6 @@ def create_app(
                 "nextcloud_path/path_root cannot change after synchronization; create a new mapping",
             )
         if new_path is not None and new_path != current["nextcloud_path"]:
-            if repo.count_state(mapping_id):
-                raise HTTPException(
-                    409,
-                    "nextcloud_path cannot change after synchronization; create a new mapping",
-                )
             try:
                 webdav.validate_folder(new_path)
             except FileNotFoundError as exc:
