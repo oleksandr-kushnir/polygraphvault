@@ -382,3 +382,50 @@ def test_scheduler_survives_repo_outage_and_keeps_polling():
         assert repo.calls >= 2  # kept polling straight through the failures
     finally:
         scheduler.stop()
+
+
+def pending_row(pending_etag, pending_hash):
+    return {
+        "rel_path": "guide.md",
+        "remote_etag": None,
+        "content_hash": None,
+        "doc_id": None,
+        "superseded_doc_id": None,
+        "sync_status": "pending",
+        "retry_count": 0,
+        "last_error": None,
+        "pending_epoch": None,
+        "pending_etag": pending_etag,
+        "pending_hash": pending_hash,
+        "updated_epoch": None,
+    }
+
+
+def test_inflight_job_defers_instead_of_duplicate_upload():
+    data = b"large slow document"
+    digest = hashlib.sha256(data).hexdigest()
+    webdav = FakeWebDav({"guide.md": (data, "e1")})
+    graph, repo = FakeGraph(), FakeRepo()
+    graph.files["Projects/Alpha/guide.md"] = GraphFile(
+        "Projects/Alpha/guide.md", None, None, "processing"
+    )
+    repo.state["guide.md"] = pending_row("e1", digest)
+    result = cycle(webdav, graph, repo)
+    assert result.deferred == 1
+    assert graph.ingests == []
+
+
+def test_crashed_pending_ingest_adopts_completed_job_without_reupload():
+    data = b"contract"
+    digest = hashlib.sha256(data).hexdigest()
+    webdav = FakeWebDav({"guide.md": (data, "e1")})
+    graph, repo = FakeGraph(), FakeRepo()
+    graph.files["Projects/Alpha/guide.md"] = GraphFile(
+        "Projects/Alpha/guide.md", "doc-done", digest, "done"
+    )
+    repo.state["guide.md"] = pending_row("e1", digest)
+    result = cycle(webdav, graph, repo)
+    assert result.adopted == 1
+    assert graph.ingests == []
+    assert repo.state["guide.md"]["doc_id"] == "doc-done"
+    assert repo.state["guide.md"]["sync_status"] == "synced"

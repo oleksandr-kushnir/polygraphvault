@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.filters import in_scope
+from app.polygraph import TERMINAL
 from app.webdav import SENTINEL
 
 log = logging.getLogger("nc-rag-sync")
@@ -205,6 +206,19 @@ def run_cycle(
                     graph.delete(mapping["workspace_id"], superseded)
                     repo.clear_superseded(mapping_id, path)
                 result.adopted += 1
+                continue
+
+            if (
+                indexed
+                and indexed.status not in TERMINAL
+                and cached
+                and cached.get("pending_hash") == digest
+            ):
+                # A previous attempt's ingest job is still running server-side
+                # for these exact bytes. Re-uploading would create an orphaned
+                # duplicate document; wait for the job to reach a terminal
+                # state instead (done -> adopted, failed -> re-ingested).
+                result.deferred += 1
                 continue
 
             old_doc_id = cached.get("doc_id") if cached else None
