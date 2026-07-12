@@ -71,16 +71,17 @@ def run_cycle(
     result.included = len(scoped)
 
     state = repo.get_state(mapping_id)
-    graph_index = graph_files_for_mapping(
-        mapping, graph.list_files(mapping["workspace_id"])
-    )
+    all_graph_files = graph.list_files(mapping["workspace_id"])
+    graph_index = graph_files_for_mapping(mapping, all_graph_files)
     owned = {path for path, row in state.items() if row.get("doc_id")}
     has_indexed_files = bool(owned)
     below_floor = has_indexed_files and len(scoped) < int(mapping["min_files"])
     missing_owned = {path for path in owned if path not in scoped and path not in oversize}
     missing_fraction = len(missing_owned) / len(owned) if owned else 0.0
     bulk_drop = missing_fraction > float(mapping.get("max_delete_fraction", 0.25))
-    unowned = set(graph_index) - set(state)
+    prefix = mapping["nextcloud_path"].strip("/") + "/"
+    owned_sources = {prefix + rel for rel in state}
+    unowned = {sp for sp in all_graph_files if sp not in owned_sources}
     result.health_degraded = created_canary or not canary_ok or below_floor or bulk_drop or bool(unowned)
     if result.health_degraded:
         repo.clear_pending_deletes(mapping_id)

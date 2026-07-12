@@ -306,3 +306,17 @@ def test_reappearing_oversize_file_resets_delete_grace():
     webdav.files["guide.md"] = (b"h" * 50, "e2")  # returns above the size cap
     run_cycle(MAPPING, webdav, graph, repo, now=1100, delete_grace=300, max_bytes=10)
     assert repo.state["guide.md"]["pending_epoch"] is None
+
+
+def test_foreign_prefix_graph_row_degrades_health():
+    webdav = FakeWebDav({"guide.md": (b"hello", "e1")})
+    graph, repo = FakeGraph(), FakeRepo()
+    cycle(webdav, graph, repo)
+    graph.files["Other/Place/manual.md"] = GraphFile(
+        "Other/Place/manual.md", "doc-foreign", "hash", "done"
+    )
+    webdav.files.clear()
+    result = cycle(webdav, graph, repo, now=99999, grace=0)
+    assert result.health_degraded
+    assert result.deleted == 0
+    assert graph.deletes == []
