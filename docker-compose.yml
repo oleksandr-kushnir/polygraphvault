@@ -1,5 +1,11 @@
 name: polygraphrag-nextcloud
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: 50m
+    max-file: "3"
+
 services:
   postgres:
     image: ${POLYGRAPHRAG_POSTGRES_IMAGE:-ghcr.io/oleksandr-kushnir/polygraphrag-postgres:latest}
@@ -20,6 +26,7 @@ services:
       timeout: 5s
       retries: 20
     restart: unless-stopped
+    logging: *default-logging
     networks: [db-rag, db-nextcloud, db-sync, postgres-control]
 
   polygraphrag:
@@ -58,6 +65,7 @@ services:
     ports:
       - "127.0.0.1:${POLYGRAPHRAG_PORT:-9622}:9622"
     restart: unless-stopped
+    logging: *default-logging
     networks: [db-rag, rag, rag-proxy]
 
   redis:
@@ -71,6 +79,7 @@ services:
       timeout: 3s
       retries: 20
     restart: unless-stopped
+    logging: *default-logging
     networks: [nextcloud]
 
   nextcloud:
@@ -100,6 +109,7 @@ services:
       retries: 60
       start_period: 30s
     restart: unless-stopped
+    logging: *default-logging
     networks: [db-nextcloud, nextcloud, nextcloud-proxy]
 
   nextcloud-cron:
@@ -111,6 +121,7 @@ services:
     volumes:
       - nextcloud-html:/var/www/html
     restart: unless-stopped
+    logging: *default-logging
     networks: [nextcloud]
 
   nc-rag-sync:
@@ -148,6 +159,7 @@ services:
       timeout: 5s
       retries: 20
     restart: unless-stopped
+    logging: *default-logging
     networks: [db-sync, nextcloud, rag, syncer-control]
 
 volumes:
