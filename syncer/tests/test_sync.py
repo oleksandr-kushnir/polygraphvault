@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.polygraph import GraphFile
 from app.sync import run_cycle
@@ -9,7 +9,7 @@ from app.webdav import SENTINEL, WebDavEntry
 
 
 def entry(data: bytes, etag: str) -> WebDavEntry:
-    return WebDavEntry(etag, len(data), datetime.now(timezone.utc).isoformat())
+    return WebDavEntry(etag, len(data), datetime.now(UTC).isoformat())
 
 
 class FakeWebDav:

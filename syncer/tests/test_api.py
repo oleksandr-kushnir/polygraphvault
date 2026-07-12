@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import psycopg
 import pytest
@@ -62,7 +62,7 @@ class ApiRepo:
     def create_mapping(self, values):
         if any(m["workspace_id"] == values["workspace_id"] for m in self.mappings.values()):
             raise psycopg.errors.UniqueViolation("duplicate workspace")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         row = {"id": self._next, "version": 1, "archived_at": None,
                "created_at": now, "updated_at": now, **values}
         self.mappings[self._next] = row
@@ -77,12 +77,12 @@ class ApiRepo:
             if key in self.ALLOWED:
                 row[key] = value
         row["version"] += 1
-        row["updated_at"] = datetime.now(timezone.utc)
+        row["updated_at"] = datetime.now(UTC)
         return dict(row)
 
     def archive_mapping(self, mapping_id):
         row = self.mappings[mapping_id]
-        row["archived_at"] = datetime.now(timezone.utc)
+        row["archived_at"] = datetime.now(UTC)
         row["enabled"] = False
         row["version"] += 1
         return True
@@ -224,7 +224,7 @@ def test_archive_restore_and_disabled_run(api):
 def test_state_and_events_endpoints(api):
     client, repo, _ = api
     mapping_id = client.post("/mappings", json=CREATE_BODY).json()["id"]
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     repo.state_rows[mapping_id] = [{
         "rel_path": "guide.md", "sync_status": "synced", "doc_id": "doc-1",
         "content_hash": "abc", "remote_etag": "e1", "retry_count": 0,

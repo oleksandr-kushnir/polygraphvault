@@ -21,7 +21,7 @@ class Config:
     canary_autocreate: bool
 
     @classmethod
-    def from_env(cls) -> "Config":
+    def from_env(cls) -> Config:
         explicit_dsn = os.environ.get("POSTGRES_DSN", "").strip()
         if explicit_dsn:
             postgres_dsn = explicit_dsn

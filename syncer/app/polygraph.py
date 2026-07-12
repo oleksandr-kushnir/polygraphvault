@@ -7,7 +7,6 @@ from dataclasses import dataclass
 
 import httpx
 
-
 TERMINAL = {"done", "failed", "save_failed"}
 
 

@@ -11,12 +11,16 @@ from fastapi.responses import JSONResponse
 from app.config import Config
 from app.db import Repository
 from app.models import (
-    EventView, FileStateView, MappingCreate, MappingPatch, MappingView, RunAccepted,
+    EventView,
+    FileStateView,
+    MappingCreate,
+    MappingPatch,
+    MappingView,
+    RunAccepted,
 )
 from app.polygraph import PolyGraphClient
 from app.sync import Scheduler
 from app.webdav import WebDavClient
-
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)

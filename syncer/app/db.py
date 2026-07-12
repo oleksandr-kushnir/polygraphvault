@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import json
 from contextlib import contextmanager
-from datetime import datetime
 from typing import Any
 
 import psycopg
 from psycopg.rows import dict_row
-
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS sync_mappings (

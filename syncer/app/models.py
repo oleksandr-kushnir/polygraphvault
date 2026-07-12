@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-
 
 DEFAULT_EXTENSIONS = "md,txt,csv,html,pdf,docx,pptx,xlsx"
 SUPPORTED_EXTENSIONS = frozenset(
@@ -33,7 +31,7 @@ def clean_path(value: str) -> str:
 class MappingCreate(BaseModel):
     nextcloud_path: str
     workspace_id: str = Field(pattern=r"^[a-z][a-z0-9_]{0,47}$")
-    workspace_name: Optional[str] = None
+    workspace_name: str | None = None
     create_workspace: bool = False
     path_root: str = "/nextcloud"
     enabled: bool = True
@@ -55,23 +53,23 @@ class MappingCreate(BaseModel):
 
 
 class MappingPatch(BaseModel):
-    nextcloud_path: Optional[str] = None
-    path_root: Optional[str] = None
-    enabled: Optional[bool] = None
-    include_extensions: Optional[str] = None
-    sync_hidden: Optional[bool] = None
-    excludes: Optional[str] = None
-    min_files: Optional[int] = Field(default=None, ge=0)
-    max_delete_fraction: Optional[float] = Field(default=None, ge=0, le=1)
+    nextcloud_path: str | None = None
+    path_root: str | None = None
+    enabled: bool | None = None
+    include_extensions: str | None = None
+    sync_hidden: bool | None = None
+    excludes: str | None = None
+    min_files: int | None = Field(default=None, ge=0)
+    max_delete_fraction: float | None = Field(default=None, ge=0, le=1)
 
     @field_validator("nextcloud_path")
     @classmethod
-    def validate_path(cls, value: Optional[str]) -> Optional[str]:
+    def validate_path(cls, value: str | None) -> str | None:
         return clean_path(value) if value is not None else value
 
     @field_validator("include_extensions")
     @classmethod
-    def validate_include_extensions(cls, value: Optional[str]) -> Optional[str]:
+    def validate_include_extensions(cls, value: str | None) -> str | None:
         return validate_extensions(value) if value is not None else value
 
 
@@ -101,12 +99,12 @@ class RunAccepted(BaseModel):
 class FileStateView(BaseModel):
     rel_path: str
     sync_status: str
-    doc_id: Optional[str] = None
-    content_hash: Optional[str] = None
-    remote_etag: Optional[str] = None
+    doc_id: str | None = None
+    content_hash: str | None = None
+    remote_etag: str | None = None
     retry_count: int = 0
-    last_error: Optional[str] = None
-    pending_delete_since: Optional[datetime] = None
+    last_error: str | None = None
+    pending_delete_since: datetime | None = None
     updated_at: datetime
 
 
@@ -114,5 +112,5 @@ class EventView(BaseModel):
     id: int
     ts: datetime
     event_type: str
-    rel_path: Optional[str] = None
-    detail: Optional[dict] = None
+    rel_path: str | None = None
+    detail: dict | None = None

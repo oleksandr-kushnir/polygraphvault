@@ -3,23 +3,21 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from email.utils import parsedate_to_datetime
-from typing import Optional
 from urllib.parse import quote, unquote, urlsplit
 
 import httpx
 
-
 DAV = "{DAV:}"
 SENTINEL = ".nc-rag-sync-health"
 PROPFIND_BODY = (
-    '<?xml version="1.0"?>'
-    '<d:propfind xmlns:d="DAV:"><d:prop>'
-    "<d:getetag/><d:getcontentlength/><d:getlastmodified/><d:resourcetype/>"
-    "</d:prop></d:propfind>"
-).encode()
+    b'<?xml version="1.0"?>'
+    b'<d:propfind xmlns:d="DAV:"><d:prop>'
+    b"<d:getetag/><d:getcontentlength/><d:getlastmodified/><d:resourcetype/>"
+    b"</d:prop></d:propfind>"
+)
 
 
-def clean_etag(value: Optional[str]) -> str:
+def clean_etag(value: str | None) -> str:
     value = (value or "").strip()
     if value.startswith("W/"):
         value = value[2:]

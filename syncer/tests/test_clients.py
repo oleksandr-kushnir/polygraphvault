@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import json
-
 import httpx
 import pytest
 
 from app.models import MappingCreate
 from app.polygraph import PolyGraphClient
-from app.webdav import SENTINEL, WebDavClient
+from app.webdav import WebDavClient
 
 
 def dav_xml(items):
@@ -21,7 +19,8 @@ def dav_xml(items):
             f"<d:resourcetype>{resource}</d:resourcetype>"
             f"</d:prop></d:propstat></d:response>"
         )
-    return ("<?xml version='1.0'?><d:multistatus xmlns:d='DAV:'>" + "".join(responses) + "</d:multistatus>").encode()
+    body = "<?xml version='1.0'?><d:multistatus xmlns:d='DAV:'>" + "".join(responses) + "</d:multistatus>"
+    return body.encode()
 
 
 def test_webdav_walk_is_recursive_and_decodes_paths():
@@ -66,7 +65,8 @@ def test_collection_flag_survives_later_propstat_block():
     ])
 
     def handler(request: httpx.Request):
-        return httpx.Response(207, content=nested_xml if request.url.path.rstrip("/").endswith("Nested") else root_xml)
+        is_nested = request.url.path.rstrip("/").endswith("Nested")
+        return httpx.Response(207, content=nested_xml if is_nested else root_xml)
 
     client = WebDavClient("http://nextcloud", "admin", "pw")
     client._http.close()

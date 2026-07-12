@@ -10,7 +10,6 @@ from typing import Any
 from app.filters import in_scope
 from app.webdav import SENTINEL
 
-
 log = logging.getLogger("nc-rag-sync")
 
 RETRY_BACKOFF_BASE_SECS = 60.0
