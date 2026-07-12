@@ -1,0 +1,2 @@
+"""Nextcloud-to-PolyGraphRAG synchronizer."""
+

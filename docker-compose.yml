@@ -1,0 +1,172 @@
+name: polygraphrag-nextcloud
+
+services:
+  postgres:
+    image: ${POLYGRAPHRAG_POSTGRES_IMAGE:-ghcr.io/oleksandr-kushnir/polygraphrag-postgres:latest}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ragdb}
+      POSTGRES_USER: ${POSTGRES_USER:-raguser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      NEXTCLOUD_DB_PASSWORD: ${NEXTCLOUD_DB_PASSWORD:?set NEXTCLOUD_DB_PASSWORD in .env}
+      SYNCER_DB_PASSWORD: ${SYNCER_DB_PASSWORD:?set SYNCER_DB_PASSWORD in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/20-init-databases.sh:ro
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-raguser} -d ${POSTGRES_DB:-ragdb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    networks: [db-rag, db-nextcloud, db-sync, postgres-control]
+
+  polygraphrag:
+    image: ${POLYGRAPHRAG_IMAGE:-ghcr.io/oleksandr-kushnir/polygraphrag:latest}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-ragdb}
+      POSTGRES_DATABASE: ${POSTGRES_DB:-ragdb}
+      POSTGRES_USER: ${POSTGRES_USER:-raguser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      LLM_MODEL: ${LLM_MODEL:-gpt-5.4-mini}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      QUERY_LLM_MODEL: ${QUERY_LLM_MODEL:-}
+      QUERY_LLM_BASE_URL: ${QUERY_LLM_BASE_URL:-}
+      QUERY_LLM_API_KEY: ${QUERY_LLM_API_KEY:-}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-1536}
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+      VISION_MODEL: ${VISION_MODEL:-gpt-5.4-mini}
+      VISION_BASE_URL: ${VISION_BASE_URL:-}
+      VISION_API_KEY: ${VISION_API_KEY:-}
+      WHISPER_MODEL: ${WHISPER_MODEL:-whisper-1}
+      WHISPER_BASE_URL: ${WHISPER_BASE_URL:-}
+      WHISPER_API_KEY: ${WHISPER_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      WORKING_DIR: /app/data
+      API_TOKENS: ${POLYGRAPHRAG_API_TOKENS:-}
+    volumes:
+      - polygraphrag-data:/app/data
+    ports:
+      - "127.0.0.1:${POLYGRAPHRAG_PORT:-9622}:9622"
+    restart: unless-stopped
+    networks: [db-rag, rag, rag-proxy]
+
+  redis:
+    image: ${REDIS_IMAGE:-redis:7-alpine}
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    networks: [nextcloud]
+
+  nextcloud:
+    image: ${NEXTCLOUD_IMAGE:-nextcloud:stable}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${NEXTCLOUD_DB_PASSWORD:?set NEXTCLOUD_DB_PASSWORD in .env}
+      REDIS_HOST: redis
+      NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER:-admin}
+      NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD:?set NEXTCLOUD_ADMIN_PASSWORD in .env}
+      NEXTCLOUD_TRUSTED_DOMAINS: localhost nextcloud
+    volumes:
+      - nextcloud-html:/var/www/html
+    ports:
+      - "127.0.0.1:${NEXTCLOUD_PORT:-8088}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost/status.php | grep -q '\"installed\":true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+    restart: unless-stopped
+    networks: [db-nextcloud, nextcloud, nextcloud-proxy]
+
+  nextcloud-cron:
+    image: ${NEXTCLOUD_IMAGE:-nextcloud:stable}
+    entrypoint: /cron.sh
+    depends_on:
+      nextcloud:
+        condition: service_healthy
+    volumes:
+      - nextcloud-html:/var/www/html
+    restart: unless-stopped
+    networks: [nextcloud]
+
+  nc-rag-sync:
+    build: ./syncer
+    depends_on:
+      postgres:
+        condition: service_healthy
+      polygraphrag:
+        condition: service_healthy
+      nextcloud:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ncragsync
+      POSTGRES_USER: ncragsync
+      POSTGRES_PASSWORD: ${SYNCER_DB_PASSWORD:?set SYNCER_DB_PASSWORD in .env}
+      NEXTCLOUD_URL: http://nextcloud
+      NEXTCLOUD_USER: ${NEXTCLOUD_SYNC_USER:-admin}
+      NEXTCLOUD_PASSWORD: ${NEXTCLOUD_SYNC_PASSWORD:?set NEXTCLOUD_SYNC_PASSWORD in .env}
+      POLYGRAPHRAG_URL: http://polygraphrag:9622
+      POLYGRAPHRAG_API_TOKEN: ${POLYGRAPHRAG_API_TOKENS:-}
+      SYNCER_API_TOKEN: ${SYNCER_API_TOKEN:-}
+      SYNC_POLL_INTERVAL: ${SYNC_POLL_INTERVAL:-30}
+      SYNC_DELETE_GRACE_SECS: ${SYNC_DELETE_GRACE_SECS:-300}
+      SYNC_MAX_FILE_MB: ${SYNC_MAX_FILE_MB:-200}
+      SYNC_INGEST_TIMEOUT: ${SYNC_INGEST_TIMEOUT:-900}
+      SYNC_CANARY_AUTOCREATE: ${SYNC_CANARY_AUTOCREATE:-true}
+    ports:
+      - "127.0.0.1:${SYNCER_PORT:-9630}:9630"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9630/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    networks: [db-sync, nextcloud, rag, syncer-control]
+
+volumes:
+  postgres-data:
+  polygraphrag-data:
+  redis-data:
+  nextcloud-html:
+
+networks:
+  db-rag:
+    internal: true
+  db-nextcloud:
+    internal: true
+  db-sync:
+    internal: true
+  nextcloud:
+    internal: true
+  rag:
+    internal: true
+  nextcloud-proxy:
+  rag-proxy:
+  postgres-control:
+  syncer-control:

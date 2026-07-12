@@ -1,0 +1,69 @@
+services:
+  postgres:
+    volumes:
+      - ${POSTGRES_DATA_DIR:?set POSTGRES_DATA_DIR}:/var/lib/postgresql/data
+      - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/20-init-databases.sh:ro
+
+  polygraphrag:
+    environment:
+      API_TOKENS: ${POLYGRAPHRAG_API_TOKENS:?set a strong PolyGraphRAG API token}
+    volumes:
+      - ${POLYGRAPHRAG_DATA_DIR:?set POLYGRAPHRAG_DATA_DIR}:/app/data
+
+  redis:
+    volumes:
+      - ${REDIS_DATA_DIR:?set REDIS_DATA_DIR}:/data
+
+  nextcloud:
+    environment:
+      NEXTCLOUD_TRUSTED_DOMAINS: ${NEXTCLOUD_DOMAIN:?set NEXTCLOUD_DOMAIN} nextcloud localhost
+      TRUSTED_PROXIES: 172.28.240.0/24
+      OVERWRITEPROTOCOL: https
+      OVERWRITEHOST: ${NEXTCLOUD_DOMAIN}
+      OVERWRITECLIURL: https://${NEXTCLOUD_DOMAIN}
+    volumes:
+      - ${NEXTCLOUD_HTML_DIR:?set NEXTCLOUD_HTML_DIR}:/var/www/html
+
+  nextcloud-cron:
+    volumes:
+      - ${NEXTCLOUD_HTML_DIR:?set NEXTCLOUD_HTML_DIR}:/var/www/html
+
+  nc-rag-sync:
+    environment:
+      SYNCER_API_TOKEN: ${SYNCER_API_TOKEN:?set a strong syncer API token}
+      SYNC_CANARY_AUTOCREATE: "false"
+
+  caddy:
+    image: ${CADDY_IMAGE:-caddy:2-alpine}
+    depends_on:
+      nextcloud:
+        condition: service_healthy
+      polygraphrag:
+        condition: service_healthy
+      nc-rag-sync:
+        condition: service_healthy
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+      NEXTCLOUD_DOMAIN: ${NEXTCLOUD_DOMAIN:?set NEXTCLOUD_DOMAIN}
+      POLYGRAPHRAG_DOMAIN: ${POLYGRAPHRAG_DOMAIN:?set POLYGRAPHRAG_DOMAIN}
+      PUBLIC_UPLOAD_LIMIT: ${PUBLIC_UPLOAD_LIMIT:-250MB}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${CADDY_DATA_DIR:?set CADDY_DATA_DIR}:/data
+      - ${CADDY_CONFIG_DIR:?set CADDY_CONFIG_DIR}:/config
+    restart: unless-stopped
+    networks: [nextcloud-proxy, rag-proxy]
+
+networks:
+  nextcloud-proxy:
+    ipam:
+      config:
+        - subnet: 172.28.240.0/24
+  rag-proxy:
+    ipam:
+      config:
+        - subnet: 172.28.241.0/24

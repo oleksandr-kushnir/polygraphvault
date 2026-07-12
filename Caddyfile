@@ -1,0 +1,41 @@
+{
+	email {$ACME_EMAIL}
+	admin off
+}
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), geolocation=(), microphone=()"
+		-Server
+	}
+}
+
+{$NEXTCLOUD_DOMAIN} {
+	import security_headers
+	encode zstd gzip
+	reverse_proxy nextcloud:80
+	log {
+		output stdout
+		format json
+	}
+}
+
+{$POLYGRAPHRAG_DOMAIN} {
+	import security_headers
+	request_body {
+		max_size {$PUBLIC_UPLOAD_LIMIT}
+	}
+	@destructive method DELETE
+	respond @destructive 403
+	@admin_post path /all-workspaces/create /workspace/*/upload/batch /workspace/*/restore
+	respond @admin_post 403
+	reverse_proxy polygraphrag:9622
+	log {
+		output stdout
+		format json
+	}
+}
