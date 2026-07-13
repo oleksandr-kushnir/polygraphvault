@@ -15,8 +15,9 @@
   <img alt="Postgres pgvector + Apache AGE" src="https://img.shields.io/badge/Postgres-pgvector%20%2B%20AGE-336791">
   <img alt="Docker Compose" src="https://img.shields.io/badge/Docker-compose-2496ED">
   <img alt="Self-hosted" src="https://img.shields.io/badge/self--hosted-loopback%20%2B%20Caddy%20TLS-5B4FCF">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-pytest-brightgreen">
+  <a href="https://github.com/oleksandr-kushnir/polygraphvault/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/oleksandr-kushnir/polygraphvault/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-black"></a>
+  <a href="https://www.linkedin.com/in/oleksandr-kushnir-ai/"><img alt="LinkedIn" src="https://img.shields.io/badge/LinkedIn-Oleksandr%20Kushnir-0A66C2?logo=linkedin&logoColor=white"></a>
 </p>
 
 PolyGraphVault turns a self-hosted [Nextcloud](https://nextcloud.com/files/) into the front door of
