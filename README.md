@@ -29,7 +29,14 @@ everything in the graph is a derived, rebuildable projection.
 ## 📂 A folder is the ingestion API
 
 **No upload portal to teach. No watched host directory to mount. No parsing pipeline to wire up.**
-People work through familiar folders, shares, and the official Nextcloud desktop and mobile apps.
+People work through familiar folders and shares using official Nextcloud apps on their devices:
+
+- 💻 [Desktop clients](https://nextcloud.com/install/#desktop-files) — Windows, macOS, and Linux
+- 📱 [Mobile apps](https://nextcloud.com/install/#files-mobile) — Android and iOS
+
+> 🖥️ Self-hosting? Follow the official
+> [Nextcloud Server installation instructions](https://nextcloud.com/install/#instructions-server).
+
 Automations write through WebDAV. The syncer discovers each accepted file, preserves its real path
 for citations, and hands it to PolyGraphRAG for OCR, layout parsing, transcription, embeddings, and
 entity/relationship extraction.
