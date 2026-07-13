@@ -16,6 +16,7 @@
   <img alt="Docker Compose" src="https://img.shields.io/badge/Docker-compose-2496ED">
   <img alt="Self-hosted" src="https://img.shields.io/badge/self--hosted-loopback%20%2B%20Caddy%20TLS-5B4FCF">
   <a href="https://github.com/oleksandr-kushnir/polygraphvault/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/oleksandr-kushnir/polygraphvault/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/oleksandr-kushnir/polygraphvault/pkgs/container/polygraphvault-sync"><img alt="Pull from GHCR" src="https://img.shields.io/badge/ghcr.io-pull%20image-2496ED?logo=docker&logoColor=white"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-black"></a>
   <a href="https://www.linkedin.com/in/oleksandr-kushnir-ai/"><img alt="LinkedIn" src="https://img.shields.io/badge/LinkedIn-Oleksandr%20Kushnir-0A66C2?logo=linkedin&logoColor=white"></a>
 </p>
