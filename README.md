@@ -1,15 +1,12 @@
+# PolyGraphVault
+
 <p align="center">
-  <img alt="PolyGraphVault: drop a file into a folder, get a queryable knowledge graph"
-       src="docs/images/hero.png" width="100%">
+  <img alt="PolyGraphVault: drop a file into a folder, get a queryable knowledge graph" src="docs/images/hero.png" width="100%">
 </p>
 
-<h1 align="center">PolyGraphVault</h1>
+**A self-hosted Nextcloud-to-knowledge-graph service** — keep documents in ordinary folders, continuously reconcile them into isolated [PolyGraphRAG](https://github.com/oleksandr-kushnir/polygraphrag) workspaces, and query both vector embeddings and an entity/relationship graph through a clean HTTP API.
 
-<p align="center">
-  <strong>Drop a file into a folder. Get a queryable knowledge graph. No pipeline required.</strong>
-</p>
-
-<p align="center">
+<p>
   <img alt="Python 3.11" src="https://img.shields.io/badge/python-3.11-blue">
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-async-009688">
   <img alt="Postgres pgvector + Apache AGE" src="https://img.shields.io/badge/Postgres-pgvector%20%2B%20AGE-336791">
@@ -21,73 +18,111 @@
   <a href="https://www.linkedin.com/in/oleksandr-kushnir-ai/"><img alt="LinkedIn" src="https://img.shields.io/badge/LinkedIn-Oleksandr%20Kushnir-0A66C2?logo=linkedin&logoColor=white"></a>
 </p>
 
-PolyGraphVault turns a self-hosted [Nextcloud](https://nextcloud.com/files/) into the front door of
-a [PolyGraphRAG](https://github.com/oleksandr-kushnir/polygraphrag) knowledge-graph engine. Point it
-at a folder, and every file you drop in is continuously reconciled into its own isolated GraphRAG
-workspace — vector embeddings **and** an entity/relationship graph in Postgres — with zero pipelines
-to babysit.
-
-```text
-Nextcloud folder  ->  polygraphvault-sync  ->  PolyGraphRAG workspace/graph
-   (put files)         (watches & syncs)          (query over HTTP)
-```
-
-Humans manage documents the way they already do — folders, share links, and the official
-[Nextcloud desktop and mobile apps](https://nextcloud.com/install/#install-clients) for Windows,
-macOS, Linux, Android, and iOS. Machines get a clean HTTP API over the resulting graph. The vault in
-between never forgets, never leaks between projects, and never destroys the last good copy of
-anything.
+PolyGraphVault packages [Nextcloud](https://nextcloud.com/files/), PolyGraphRAG, Postgres, Redis,
+and a safety-aware FastAPI synchronizer into one deployable stack. It adds **runtime folder-to-graph
+mappings**, **continuous file lifecycle reconciliation**, **exclusive workspace ownership**,
+**guarded deletion**, and a queryable **audit trail**. Nextcloud remains the source of truth;
+everything in the graph is a derived, rebuildable projection.
 
 ---
 
-## 🤖 For the automators: this is your ingestion layer, solved
+## 📂 A folder is the ingestion API
 
-**Stop building document pipelines.** If you live in n8n, Make, Zapier, or a pile of cron scripts,
-PolyGraphVault collapses the entire "parse → OCR → chunk → embed → extract entities → store" stack
-into two HTTP calls:
+**No upload portal to teach. No watched host directory to mount. No parsing pipeline to wire up.**
+People work through familiar folders, shares, and the official Nextcloud desktop and mobile apps.
+Automations write through WebDAV. The syncer discovers each accepted file, preserves its real path
+for citations, and hands it to PolyGraphRAG for OCR, layout parsing, transcription, embeddings, and
+entity/relationship extraction.
 
-1. **Write** — route any trigger's output into a Nextcloud folder with one WebDAV `PUT`. Email
-   attachments, form uploads, scraped reports, meeting recordings — whatever your flow already
-   produces.
-2. **Query** — hit `POST /workspace/{id}/query` like any other HTTP node once it's ingested.
+PDFs, Office documents, images, audio, Markdown, text, CSV, and HTML all enter through the same
+folder workflow. Each mapping targets one exclusive PolyGraphRAG workspace, so client, case, or
+project corpora remain isolated on one deployment.
 
-Everything in between — OCR, transcription, entity extraction, graph building across **22 file
-types** (PDFs, Office docs, images, audio) — happens automatically. The whole API is declared in
-`/openapi.json`, so a tool-calling agent can learn it from the spec alone.
-
-```
-   your trigger ──PUT──►  Nextcloud folder  ──►  graph  ──POST /query──►  structured answer
-   (any node)             (one WebDAV call)                              (JSON, no glue code)
-```
-
-### Why teams reach for it
-
-| If you're… | You get… |
-|---|---|
-| 🤖 **An AI automator** | A drop-in ingestion backend. One WebDAV write in, one query call out. No parsing, no embeddings plumbing, no vector-DB ops. |
-| 🧠 **Building autonomous agents** | Durable, inspectable memory. Agents write findings as Markdown; minutes later those facts are retrievable entities and relationships. `query/data` returns structured evidence — no LLM prose. And because Nextcloud is the source of truth, a human can open any file the agent "remembers." |
-| 🔀 **Running document-heavy workflows** | One deployment, many sealed vaults. Each folder→workspace mapping owns its graph exclusively — per-client, per-case, per-project, with no cross-talk, enforced at creation. |
-| 🔐 **Serious about data ownership** | Everything self-hosted: Nextcloud, Postgres (pgvector + Apache AGE), and the syncer behind loopback-only ports, with Caddy TLS as the single hardened public surface. Model providers are pluggable per role — OpenAI-compatible, Ollama, vLLM, OpenRouter — so even inference can stay in-house. |
+**One folder, one owned graph, one query surface.** A human can always open the original file an
+answer cites, while an application can retrieve its graph-aware evidence over HTTP.
 
 ---
 
-## 🛡️ Built like infrastructure, not a demo
+## 🔀🤖 The sync layer for n8n workflows and AI agents
 
-The whole design exists to never destroy the last good copy of your knowledge:
+**Pure HTTP, built for automators.** There is no SDK or client library to adopt. Both FastAPI
+services expose Swagger UI and OpenAPI contracts, so an n8n HTTP Request node or tool-calling agent
+can operate the complete flow:
 
-- **Never lose the last good copy.** Changed files are re-ingested *before* the old graph document
-  is deleted. A failed replacement leaves the previous version fully queryable.
-- **Deletes require proof of health.** A WebDAV canary, minimum-file floors, and a
-  max-delete-fraction guard turn "the share went dark" into a paused, audited degradation — not a
-  mass delete. Missing files must stay missing through a grace window of *healthy* scans before
-  anything is removed.
-- **Exclusive ownership, no adoption.** The syncer tracks exactly which graph documents it created
-  and never touches rows it doesn't own.
-- **Everything is audited.** Every ingest, replacement, delete, failure, and degradation lands in a
-  queryable `sync_events` trail.
-- **Isolation by construction.** Three separate Postgres databases/roles, internal-only Docker
-  networks, constant-time bearer-token auth, and a mapping API that is deliberately never exposed
-  publicly (SSH tunnel/VPN only).
+- **Write** — send an email attachment, generated report, form upload, or agent note to Nextcloud
+  with one WebDAV `PUT`.
+- **Reconcile** — let `polygraphvault-sync` detect changes, poll asynchronous ingestion, retry
+  failures with backoff, and safely retire stale graph documents.
+- **Query** — call `POST /workspace/{id}/query` for an answer or
+  `POST /workspace/{id}/query/data` for structured evidence without LLM prose.
+- **Inspect** — read mapping state and audit events, or open the original Nextcloud document behind
+  a citation.
+
+Agents get durable, human-inspectable memory; workflows get multimodal GraphRAG without owning a
+document-processing pipeline.
+
+---
+
+## Why it's interesting
+
+- 🗂️ **Nextcloud is the source of truth.** Files stay browsable, shareable, versioned, and usable
+  from standard desktop and mobile clients; the graph can always be rebuilt.
+- 🕸️ **A real knowledge graph, not just chunks.** PolyGraphRAG stores embeddings in pgvector and
+  entities/relationships in Apache AGE, then retrieves across both.
+- 🔐 **Many sealed vaults on one stack.** Every mapping owns one workspace exclusively. The syncer
+  never adopts or deletes documents it did not create.
+- 🛡️ **Safe replacement and deletion.** Changed files are ingested before their previous graph
+  documents are removed. Canary checks, minimum-file floors, bulk-drop limits, and healthy-scan
+  grace periods stop an outage from becoming a mass deletion.
+- 🧾 **Auditable and self-healing.** Ingests, replacements, deletes, retries, failures, and degraded
+  scans are recorded; interrupted jobs can be recovered without duplicating documents.
+- 🔌 **Provider-agnostic.** PolyGraphRAG independently routes extraction, query, vision, embeddings,
+  and Whisper to OpenAI or compatible providers such as OpenRouter, Ollama, vLLM, and LM Studio.
+- ⚙️ **Hardened for self-hosting.** Separate database roles, internal Compose networks, loopback
+  backend ports, bearer auth, and a Caddy-only VPS edge keep the control plane private.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    writers([People / agents / automations]) -->|files + WebDAV| nc
+    operator([Operator / Swagger]) -->|mapping API| sync
+    readers([Apps / agents]) -->|query API| rag
+
+    subgraph vault[PolyGraphVault private service networks]
+      nc[Nextcloud<br/>source files + UI + WebDAV]
+      sync[polygraphvault-sync<br/>mapping API + reconciliation]
+      rag[PolyGraphRAG<br/>parsing + graph-RAG]
+      redis[(Redis<br/>cache + file locking)]
+
+      nc <--> redis
+      sync <-->|recursive WebDAV scan + download| nc
+      sync -->|ingest + poll + delete| rag
+    end
+
+    subgraph pg[Postgres service — isolated databases and roles]
+      ncdb[(Nextcloud DB)]
+      syncdb[(mappings + state<br/>+ audit events)]
+      ragdb[(pgvector embeddings<br/>+ Apache AGE graph)]
+    end
+
+    nc --> ncdb
+    sync --> syncdb
+    rag --> ragdb
+    rag <--> providers[LLM + vision + embeddings<br/>+ Whisper providers]
+```
+
+Each mapping binds one Nextcloud folder to one exclusive PolyGraphRAG workspace. The syncer's
+Postgres state is the authority for document ownership; Nextcloud supplies canonical bytes and
+PolyGraphRAG supplies the rebuildable graph projection. On the VPS, Caddy is the only public edge:
+it exposes Nextcloud and a token-protected query route, while the mapping API stays on loopback for
+SSH or VPN access.
+
+## Requires Nextcloud and PolyGraphRAG to run
+
+The syncer is a reconciliation service, not a standalone indexer. It needs Nextcloud WebDAV,
+PolyGraphRAG, and Postgres to serve real mappings; `docker compose up` starts the complete stack.
+Only the Python test suite runs without those services because it uses in-memory fakes.
 
 ---
 
