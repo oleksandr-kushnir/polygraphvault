@@ -125,7 +125,7 @@ flowchart LR
         direction LR
         rag_meta[(file + job + workspace metadata)]
         vectors[(pgvector<br/>embeddings)]
-        graph[(Apache AGE<br/>knowledge graph)]
+        age_store[(Apache AGE<br/>knowledge graph)]
       end
 
       rag_api -->|asynchronous ingest| raga
@@ -135,7 +135,7 @@ flowchart LR
       lightrag <--> providers
       rag_api --> rag_meta
       lightrag --> vectors
-      lightrag --> graph
+      lightrag --> age_store
     end
 
     nc <-->|PROPFIND scans + GET downloads| scheduler
