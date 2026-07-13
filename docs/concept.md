@@ -59,6 +59,10 @@ A mapping contains:
 
 API contract:
 
+- `GET /settings` — a static human-facing landing page linking to the interactive OpenAPI (Swagger)
+  consoles of the syncer (`/docs`) and PolyGraphRAG. The syncer root `/` redirects here. Like
+  `GET /health`, it is navigation-only and exempt from bearer-token auth; the browser-facing
+  PolyGraphRAG docs URL is configured via `POLYGRAPHRAG_DOCS_URL`.
 - `GET /health`
 - `GET /mappings`
 - `POST /mappings`
@@ -170,7 +174,12 @@ and delete grace. Secrets are stored only in an uncommitted `.env`; `.env.exampl
 credentials.
 
 All backend host ports bind to `127.0.0.1`. The syncer sends a bearer token to PolyGraphRAG and its
-own API independently requires a bearer token. External exposure is provided by the VPS override.
+own API independently requires a bearer token. These two tokens can share a single value: when the
+service-specific `SYNCER_API_TOKEN` / `POLYGRAPHRAG_API_TOKENS` are blank they both fall back to a
+shared `API_TOKEN`, convenient for local single-operator use. On the VPS they are kept distinct on
+purpose — the PolyGraphRAG token guards a public read-only route while the syncer token guards the
+never-public control plane, so a shared token there would widen the control-plane blast radius.
+External exposure is provided by the VPS override.
 That profile publishes only Caddy on ports 80/443, configures Nextcloud's proxy/HTTPS settings, adds
 security headers, and leaves every backend port bound to loopback or private Compose networks. The
 mapping API is deliberately not reverse-proxied: it remains reachable through the VPS loopback

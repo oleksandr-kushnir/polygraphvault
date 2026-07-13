@@ -21,6 +21,7 @@ class Config:
     canary_autocreate: bool
     events_retention_days: float
     allow_token_query_param: bool = False
+    polygraphrag_docs_url: str = "http://127.0.0.1:9622/docs"
 
     @classmethod
     def from_env(cls) -> Config:
@@ -57,4 +58,7 @@ class Config:
                 "SYNCER_ALLOW_TOKEN_QUERY_PARAM", "false"
             ).lower()
             in {"1", "true", "yes", "on"},
+            polygraphrag_docs_url=os.environ.get(
+                "POLYGRAPHRAG_DOCS_URL", "http://127.0.0.1:9622/docs"
+            ).strip(),
         )

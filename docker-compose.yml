@@ -59,7 +59,7 @@ services:
       WHISPER_API_KEY: ${WHISPER_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       WORKING_DIR: /app/data
-      API_TOKENS: ${POLYGRAPHRAG_API_TOKENS:-}
+      API_TOKENS: ${POLYGRAPHRAG_API_TOKENS:-${API_TOKEN:-}}
     volumes:
       - polygraphrag-data:/app/data
     ports:
@@ -144,8 +144,14 @@ services:
       NEXTCLOUD_USER: ${NEXTCLOUD_SYNC_USER:-admin}
       NEXTCLOUD_PASSWORD: ${NEXTCLOUD_SYNC_PASSWORD:?set NEXTCLOUD_SYNC_PASSWORD in .env}
       POLYGRAPHRAG_URL: http://polygraphrag:9622
-      POLYGRAPHRAG_API_TOKEN: ${POLYGRAPHRAG_API_TOKENS:-}
-      SYNCER_API_TOKEN: ${SYNCER_API_TOKEN:-}
+      # Browser-facing PolyGraphRAG docs URL for the /settings page (the internal
+      # Docker address above is not reachable from a browser).
+      POLYGRAPHRAG_DOCS_URL: ${POLYGRAPHRAG_DOCS_URL:-http://127.0.0.1:${POLYGRAPHRAG_PORT:-9622}/docs}
+      # Both tokens fall back to a single shared API_TOKEN when their specific var
+      # is unset/empty, so one value in .env can guard both services. Set the
+      # specific vars to override per-service (kept split on the VPS).
+      POLYGRAPHRAG_API_TOKEN: ${POLYGRAPHRAG_API_TOKENS:-${API_TOKEN:-}}
+      SYNCER_API_TOKEN: ${SYNCER_API_TOKEN:-${API_TOKEN:-}}
       SYNC_POLL_INTERVAL: ${SYNC_POLL_INTERVAL:-30}
       SYNC_DELETE_GRACE_SECS: ${SYNC_DELETE_GRACE_SECS:-300}
       SYNC_MAX_FILE_MB: ${SYNC_MAX_FILE_MB:-200}

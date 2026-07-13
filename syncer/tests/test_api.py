@@ -210,6 +210,24 @@ def test_header_still_authenticates_when_query_param_enabled():
         ).status_code == 200
 
 
+def test_settings_page_is_open_and_links_both_docs():
+    cfg = replace(make_config(), polygraphrag_docs_url="http://127.0.0.1:9622/docs")
+    app = create_app(
+        cfg, repo=ApiRepo(), webdav=StubWebDav(), graph=StubGraph(), scheduler=StubScheduler()
+    )
+    with TestClient(app) as bare:
+        # Reachable with no token even though one is configured (pure navigation).
+        page = bare.get("/settings")
+        assert page.status_code == 200
+        assert "text/html" in page.headers["content-type"]
+        assert 'href="/docs"' in page.text  # syncer's own Swagger, same origin
+        assert "http://127.0.0.1:9622/docs" in page.text  # PolyGraphRAG docs
+        # Bare root redirects to the settings page.
+        root = bare.get("/", follow_redirects=False)
+        assert root.status_code in (307, 308)
+        assert root.headers["location"] == "/settings"
+
+
 def test_create_mapping_schedules_run_and_rejects_duplicates(api):
     client, _, scheduler = api
     created = client.post("/mappings", json=CREATE_BODY)

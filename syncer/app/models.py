@@ -77,9 +77,9 @@ class MappingView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    nextcloud_path: str
     workspace_id: str
     path_root: str
+    nextcloud_path: str
     enabled: bool
     include_extensions: str
     sync_hidden: bool

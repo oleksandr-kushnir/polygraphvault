@@ -72,15 +72,25 @@ docker compose ps
 
 Current local endpoints (configured in `.env` to coexist with the other projects):
 
+- **Settings entry point: `http://127.0.0.1:19630/settings`** — a single page linking to both
+  interactive OpenAPI (Swagger) consoles below. The syncer root `/` redirects here. This page is a
+  navigation-only convenience and stays reachable without a token.
 - Nextcloud UI: `http://127.0.0.1:18088`
 - PolyGraphRAG API/docs: `http://127.0.0.1:19622/docs`
 - Syncer API/docs: `http://127.0.0.1:19630/docs`
 - Postgres: `127.0.0.1:15432`
 
+The syncer's Swagger console (`/docs`) is a full CRUD UI for mappings: every route has a "Try it
+out" button that fires the real request. Reach it from the settings page above.
+
 The syncer API requires `Authorization: Bearer <SYNCER_API_TOKEN>` whenever `SYNCER_API_TOKEN` is
 set. An empty token disables syncer auth entirely — acceptable only for loopback local development;
 the VPS override refuses to start without one. PolyGraphRAG auth is enabled when
-`POLYGRAPHRAG_API_TOKENS` is non-empty.
+`POLYGRAPHRAG_API_TOKENS` is non-empty. A single shared `API_TOKEN` in `.env` is used by **both**
+services whenever their specific `SYNCER_API_TOKEN` / `POLYGRAPHRAG_API_TOKENS` are left blank — one
+value guards everything locally. Keep the two split on the VPS (see [.env.vps.example](.env.vps.example)):
+they guard different privilege levels. The browser-facing PolyGraphRAG docs link is set with
+`POLYGRAPHRAG_DOCS_URL`.
 
 Read [the reviewed concept](docs/concept.md) and [security model](docs/security.md) before a VPS
 deployment.

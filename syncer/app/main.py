@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 
 import psycopg
 from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from app.config import Config
 from app.db import Repository
@@ -18,6 +18,7 @@ from app.models import (
     MappingView,
     RunAccepted,
 )
+from app.pages import render_settings_page
 from app.polygraph import PolyGraphClient
 from app.sync import Scheduler
 from app.webdav import WebDavClient
@@ -68,9 +69,14 @@ def create_app(
     application.state.graph = graph
     application.state.scheduler = scheduler
 
+    # Unauthenticated paths: liveness probe and the human navigation page.
+    # Both are pure navigation/status with no data or mutating power, so they
+    # stay reachable even when a bearer token is configured.
+    open_paths = {"/health", "/", "/settings"}
+
     @application.middleware("http")
     async def require_token(request: Request, call_next):
-        if not cfg.syncer_api_token or request.url.path == "/health":
+        if not cfg.syncer_api_token or request.url.path in open_paths:
             return await call_next(request)
         supplied = request.headers.get("authorization", "")
         expected = f"Bearer {cfg.syncer_api_token}"
@@ -94,6 +100,14 @@ def create_app(
         if mapping is None:
             raise HTTPException(404, "mapping not found")
         return mapping
+
+    @application.get("/", include_in_schema=False)
+    def root():
+        return RedirectResponse(url="/settings")
+
+    @application.get("/settings", response_class=HTMLResponse, include_in_schema=False)
+    def settings_page():
+        return render_settings_page(cfg.polygraphrag_docs_url)
 
     @application.get("/health")
     def health(response: Response):
