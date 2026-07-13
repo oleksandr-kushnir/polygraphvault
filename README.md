@@ -38,6 +38,11 @@ PDFs, Office documents, images, audio, Markdown, text, CSV, and HTML all enter t
 folder workflow. Each mapping targets one exclusive PolyGraphRAG workspace, so client, case, or
 project corpora remain isolated on one deployment.
 
+Document parsing and OCR are powered by
+[MinerU](https://github.com/opendatalab/MinerU) through PolyGraphRAG. MinerU is distributed under
+the [MinerU Open Source License](https://github.com/opendatalab/MinerU/blob/master/LICENSE.md),
+which requires visible attribution for online services based on it.
+
 **One folder, one owned graph, one query surface.** A human can always open the original file an
 answer cites, while an application can retrieve its graph-aware evidence over HTTP.
 
@@ -298,18 +303,23 @@ restart recovery.
 PolyGraphVault's own source — the **syncer** (`syncer/`) and the deployment configuration in this
 repository — is released under the [MIT License](LICENSE).
 
-PolyGraphVault is an *orchestration layer*: it does not bundle or redistribute the source of the
-services it composes. Those run as unmodified upstream container images, each governed by its own
-license, and are pulled at deploy time — not vendored here:
+PolyGraphVault is an *orchestration layer*. Its syncer image does not incorporate Nextcloud or
+PolyGraphRAG libraries; Compose references separately distributed upstream images, and every image
+and bundled dependency retains its own license:
 
 | Component | Image | License |
 |---|---|---|
-| PolyGraphRAG (+ Postgres distro) | `ghcr.io/oleksandr-kushnir/polygraphrag*` | MIT |
+| PolyGraphRAG API | `ghcr.io/oleksandr-kushnir/polygraphrag` | PolyGraphRAG code: MIT; bundled dependencies have separate licenses — see upstream [NOTICE](https://github.com/oleksandr-kushnir/polygraphrag/blob/main/NOTICE) and [inventory](https://github.com/oleksandr-kushnir/polygraphrag/blob/main/THIRD_PARTY_LICENSES.md) |
+| PolyGraphRAG Postgres | `ghcr.io/oleksandr-kushnir/polygraphrag-postgres` | PostgreSQL License (PostgreSQL, pgvector) and Apache-2.0 (Apache AGE); see the upstream inventory |
 | Nextcloud | `nextcloud:stable` | AGPL-3.0 |
-| PostgreSQL (pgvector + Apache AGE) | upstream | PostgreSQL License / Apache-2.0 |
-| Redis | upstream | BSD-3-Clause / RSALv2+SSPL (per version) |
-| Caddy | upstream | Apache-2.0 |
+| Redis | `redis:7-alpine` | BSD-3-Clause / RSALv2+SSPL (version-dependent) |
+| Caddy | `caddy:2-alpine` | Apache-2.0 |
 
-Using these images unmodified as containers imposes no source-distribution obligation on this
-repository. If you modify and redistribute any of the copyleft-licensed components (notably
-Nextcloud, AGPL-3.0), you must comply with that component's own terms.
+The PolyGraphRAG image includes RAG-Anything and LightRAG (MIT) and MinerU (the custom,
+Apache-2.0-based MinerU Open Source License), plus a version-dependent transitive dependency tree.
+Its upstream NOTICE and generated inventory are authoritative for the image build.
+
+Merely referencing an upstream image in Compose is different from redistributing it. If you mirror,
+export, bundle, modify, or otherwise redistribute an image, include its applicable notices and
+comply with every bundled component's terms. Modified copyleft components such as Nextcloud may
+also create source-disclosure obligations. This summary is not legal advice.
