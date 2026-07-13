@@ -1,7 +1,7 @@
 [project]
-name = "nc-rag-sync"
+name = "polygraphvault-sync"
 version = "1.0.0"
-description = "Nextcloud to PolyGraphRAG synchronizer"
+description = "PolyGraphVault: Nextcloud to PolyGraphRAG synchronizer"
 requires-python = ">=3.11"
 
 [tool.ruff]

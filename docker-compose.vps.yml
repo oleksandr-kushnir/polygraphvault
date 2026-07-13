@@ -34,7 +34,7 @@ services:
     volumes:
       - ${NEXTCLOUD_HTML_DIR:?set NEXTCLOUD_HTML_DIR}:/var/www/html
 
-  nc-rag-sync:
+  polygraphvault-sync:
     environment:
       SYNCER_API_TOKEN: ${SYNCER_API_TOKEN:?set a strong syncer API token}
       SYNC_CANARY_AUTOCREATE: "false"
@@ -46,7 +46,7 @@ services:
         condition: service_healthy
       polygraphrag:
         condition: service_healthy
-      nc-rag-sync:
+      polygraphvault-sync:
         condition: service_healthy
     environment:
       ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}

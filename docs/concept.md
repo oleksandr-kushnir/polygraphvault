@@ -1,11 +1,11 @@
-# Nextcloud to PolyGraphRAG: standalone system concept
+# PolyGraphVault: standalone system concept (Nextcloud to PolyGraphRAG)
 
 ## 1. Goal and scope
 
 This repository deploys a fresh, standalone document-to-knowledge-graph system:
 
 ```text
-Nextcloud folder -> nc-rag-sync -> PolyGraphRAG workspace/graph
+Nextcloud folder -> polygraphvault-sync -> PolyGraphRAG workspace/graph
 ```
 
 There is no agent workspace and no host-folder bridge. Nextcloud is the source of truth for
@@ -28,7 +28,7 @@ The PolyGraphRAG and PolyGraphRAG Postgres images are pulled from
 | `nextcloud` | source document UI and WebDAV server | loopback only |
 | `nextcloud-cron` | Nextcloud background jobs | none |
 | `redis` | Nextcloud cache and transactional file locking | none |
-| `nc-rag-sync` | mapping API and background reconciliation | loopback only |
+| `polygraphvault-sync` | mapping API and background reconciliation | loopback only |
 
 Persistent application data uses Docker named volumes in the local deployment. A container rebuild
 or recreation does not delete it. The deployment is fresh by design and does not import volumes or

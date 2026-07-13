@@ -11,7 +11,7 @@ from app.filters import in_scope
 from app.polygraph import TERMINAL
 from app.webdav import SENTINEL
 
-log = logging.getLogger("nc-rag-sync")
+log = logging.getLogger("polygraphvault-sync")
 
 RETRY_BACKOFF_BASE_SECS = 60.0
 RETRY_BACKOFF_CAP_SECS = 3600.0

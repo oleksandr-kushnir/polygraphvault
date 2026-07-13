@@ -4,15 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A standalone document-to-knowledge-graph pipeline:
+**PolyGraphVault** — a standalone document-to-knowledge-graph pipeline:
 
 ```text
-Nextcloud folder -> nc-rag-sync -> PolyGraphRAG workspace/graph
+Nextcloud folder -> polygraphvault-sync -> PolyGraphRAG workspace/graph
 ```
 
 Nextcloud is the source of truth for document bytes; a PolyGraphRAG workspace is a derived,
 rebuildable projection. The only custom code in this repo is the **syncer** (`syncer/`, service
-`nc-rag-sync`) — a FastAPI app that owns folder-to-workspace mappings and continuously reconciles
+`polygraphvault-sync`) — a FastAPI app that owns folder-to-workspace mappings and continuously reconciles
 them. PolyGraphRAG, its Postgres distribution, Nextcloud, Redis, and Caddy are all pulled/published
 images (`ghcr.io/oleksandr-kushnir/polygraphrag*`, `nextcloud:stable`, etc.); do not expect their
 source here.
@@ -27,7 +27,7 @@ Run the syncer test suite (pure Python, uses in-memory fakes — no live databas
 ```powershell
 # Inside the built image (matches CI/README):
 docker run --rm -v "${PWD}\syncer:/src" -w /src `
-  polygraphrag-nextcloud-nc-rag-sync `
+  polygraphvault-sync `
   sh -c "pip install pytest==8.4.1 && python -m pytest -q"
 
 # Or locally from syncer/ with deps installed (pip install -r requirements-dev.txt):
@@ -41,7 +41,7 @@ Local stack (endpoints are remapped in `.env` to coexist with other projects —
 
 ```powershell
 docker compose pull
-docker compose build nc-rag-sync
+docker compose build polygraphvault-sync
 docker compose up -d
 docker compose ps
 ```
