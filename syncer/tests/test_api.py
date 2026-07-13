@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import psycopg
@@ -179,6 +180,34 @@ def test_requests_without_token_are_rejected_but_health_is_open(api):
     assert bare.get("/mappings").status_code == 401
     assert bare.get("/mappings", headers={"Authorization": "Bearer wrong"}).status_code == 401
     assert bare.get("/health").status_code == 200
+
+
+def test_token_query_param_rejected_when_flag_disabled(api):
+    client, _, _ = api
+    bare = TestClient(client.app)
+    assert bare.get(f"/mappings?token={TOKEN}").status_code == 401
+
+
+def _query_param_client():
+    cfg = replace(make_config(), allow_token_query_param=True)
+    app = create_app(
+        cfg, repo=ApiRepo(), webdav=StubWebDav(), graph=StubGraph(), scheduler=StubScheduler()
+    )
+    return TestClient(app)
+
+
+def test_token_query_param_accepted_when_flag_enabled():
+    with _query_param_client() as bare:
+        assert bare.get(f"/mappings?token={TOKEN}").status_code == 200
+        assert bare.get("/mappings?token=wrong").status_code == 401
+        assert bare.get("/mappings").status_code == 401
+
+
+def test_header_still_authenticates_when_query_param_enabled():
+    with _query_param_client() as bare:
+        assert bare.get(
+            "/mappings", headers={"Authorization": f"Bearer {TOKEN}"}
+        ).status_code == 200
 
 
 def test_create_mapping_schedules_run_and_rejects_duplicates(api):

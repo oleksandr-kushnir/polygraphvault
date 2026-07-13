@@ -74,7 +74,14 @@ def create_app(
             return await call_next(request)
         supplied = request.headers.get("authorization", "")
         expected = f"Bearer {cfg.syncer_api_token}"
-        if not secrets.compare_digest(supplied, expected):
+        authorized = secrets.compare_digest(supplied, expected)
+        # Optional fallback for clients that cannot set headers (e.g. a plain
+        # browser link). Deliberately off by default and never enabled on the
+        # VPS — query strings leak into access logs, history, and Referer.
+        if not authorized and cfg.allow_token_query_param:
+            query_token = request.query_params.get("token", "")
+            authorized = secrets.compare_digest(query_token, cfg.syncer_api_token)
+        if not authorized:
             return JSONResponse(
                 status_code=401,
                 content={"detail": "invalid or missing bearer token"},

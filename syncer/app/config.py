@@ -20,6 +20,7 @@ class Config:
     ingest_timeout: float
     canary_autocreate: bool
     events_retention_days: float
+    allow_token_query_param: bool = False
 
     @classmethod
     def from_env(cls) -> Config:
@@ -52,4 +53,8 @@ class Config:
             canary_autocreate=os.environ.get("SYNC_CANARY_AUTOCREATE", "true").lower()
             in {"1", "true", "yes", "on"},
             events_retention_days=float(os.environ.get("SYNC_EVENTS_RETENTION_DAYS", "90")),
+            allow_token_query_param=os.environ.get(
+                "SYNCER_ALLOW_TOKEN_QUERY_PARAM", "false"
+            ).lower()
+            in {"1", "true", "yes", "on"},
         )
