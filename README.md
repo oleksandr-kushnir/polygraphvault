@@ -85,38 +85,72 @@ document-processing pipeline.
 
 ```mermaid
 flowchart LR
-    writers([People / agents / automations]) -->|files + WebDAV| nc
-    operator([Operator / Swagger]) -->|mapping API| sync
-    readers([Apps / agents]) -->|query API| rag
+    authors([People / apps / automations]) -->|files, shares, WebDAV| nc
+    operator([Operator / Swagger]) -->|mapping control API| sync_api
+    consumers([Apps / agents]) -->|query API| rag_api
 
-    subgraph vault[PolyGraphVault private service networks]
-      nc[Nextcloud<br/>source files + UI + WebDAV]
-      sync[polygraphvault-sync<br/>mapping API + reconciliation]
-      rag[PolyGraphRAG<br/>parsing + graph-RAG]
-      redis[(Redis<br/>cache + file locking)]
+    subgraph nextcloud_stack[1. Nextcloud — source of truth]
+      direction TB
+      nc[Nextcloud<br/>Files UI + sync clients + WebDAV]
+      nc_cron[Nextcloud cron<br/>background maintenance jobs]
+      redis[(Redis<br/>cache + transactional file locking)]
+      nc_db[(Postgres: nextcloud DB<br/>users + shares + file metadata)]
 
+      nc_cron -->|runs cron.php| nc
       nc <--> redis
-      sync <-->|recursive WebDAV scan + download| nc
-      sync -->|ingest + poll + delete| rag
+      nc <--> nc_db
     end
 
-    subgraph pg[Postgres service — isolated databases and roles]
-      ncdb[(Nextcloud DB)]
-      syncdb[(mappings + state<br/>+ audit events)]
-      ragdb[(pgvector embeddings<br/>+ Apache AGE graph)]
+    subgraph syncer_stack[2. polygraphvault-sync — control and reconciliation]
+      direction TB
+      sync_api[FastAPI mapping API<br/>CRUD + enable/disable + manual run]
+      scheduler[Scheduler + reconciler<br/>recursive scan + etag/hash comparison]
+      guards[Scope and safety gates<br/>filters + canary + delete grace + retry backoff]
+      sync_db[(Postgres: ncragsync DB<br/>mappings + ownership + file state + audit events)]
+
+      sync_api -->|configuration + run requests| scheduler
+      scheduler --> guards
+      sync_api <--> sync_db
+      scheduler <--> sync_db
     end
 
-    nc --> ncdb
-    sync --> syncdb
-    rag --> ragdb
-    rag <--> providers[LLM + vision + embeddings<br/>+ Whisper providers]
+    subgraph rag_stack[3. PolyGraphRAG — rebuildable graph projection]
+      direction TB
+      rag_api[FastAPI service<br/>workspaces + ingest jobs + query]
+      raga[RAG-Anything<br/>file parsing + OCR + transcription]
+      lightrag[LightRAG<br/>entity extraction + graph/vector retrieval]
+      providers[Model providers per role<br/>LLM + vision + embeddings + Whisper]
+
+      subgraph rag_db[Postgres: ragdb]
+        direction LR
+        rag_meta[(file + job + workspace metadata)]
+        vectors[(pgvector<br/>embeddings)]
+        graph[(Apache AGE<br/>knowledge graph)]
+      end
+
+      rag_api -->|asynchronous ingest| raga
+      raga --> lightrag
+      rag_api -->|query| lightrag
+      raga <--> providers
+      lightrag <--> providers
+      rag_api --> rag_meta
+      lightrag --> vectors
+      lightrag --> graph
+    end
+
+    nc <-->|PROPFIND scans + GET downloads| scheduler
+    guards <-->|upload with source path + poll jobs + owned deletes| rag_api
 ```
 
-Each mapping binds one Nextcloud folder to one exclusive PolyGraphRAG workspace. The syncer's
-Postgres state is the authority for document ownership; Nextcloud supplies canonical bytes and
-PolyGraphRAG supplies the rebuildable graph projection. On the VPS, Caddy is the only public edge:
-it exposes Nextcloud and a token-protected query route, while the mapping API stays on loopback for
-SSH or VPN access.
+The numbered stacks show the ownership boundary. Nextcloud, its cron worker, and Redis maintain the
+canonical file service. The syncer reads files only through WebDAV and records mapping, ownership,
+retry, deletion, and audit state in its own database. PolyGraphRAG owns parsing and retrieval, with
+RAG-Anything feeding LightRAG and each workspace isolated in pgvector and Apache AGE. All three
+databases use one Postgres service but separate databases, roles, and Compose networks.
+
+Each mapping binds one Nextcloud folder to one exclusive PolyGraphRAG workspace. On the VPS, Caddy
+is the only public edge: it exposes Nextcloud and a token-protected query route, while the syncer
+mapping API stays on loopback for SSH or VPN access.
 
 ## Requires Nextcloud and PolyGraphRAG to run
 
