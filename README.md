@@ -55,9 +55,7 @@ answer cites, while an application can retrieve its graph-aware evidence over HT
 </p>
 
 *The ingestion side: ordinary Nextcloud folders and files. Users drop PDFs, Office documents, media,
-and notes into familiar folders (here `PolyGraphRAG E2E`, `Documents`, `Templates`, …); the
-`.nc-rag-sync-health` files are the syncer's canary sentinels, which must be present for a healthy
-scan before any deletion is authorized.*
+and notes into familiar folders.*
 
 <p align="center">
   <img alt="A PolyGraphRAG workspace rendered as an interactive knowledge graph — entity nodes colored by type (agent, artifact, concept, content, method, metric, system, …) linked by extracted relationships." src="docs/images/workspace-graph.png" width="100%">
