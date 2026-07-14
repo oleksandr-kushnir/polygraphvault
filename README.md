@@ -50,6 +50,24 @@ which requires visible attribution for online services based on it.
 **One folder, one owned graph, one query surface.** A human can always open the original file an
 answer cites, while an application can retrieve its graph-aware evidence over HTTP.
 
+<p align="center">
+  <img alt="The Nextcloud Files UI — ordinary folders and documents are the ingestion API. Note the .nc-rag-sync-health canary sentinel the syncer uses to confirm the folder is reachable before it authorizes any deletion." src="docs/images/nextcloud-files.png" width="100%">
+</p>
+
+*The ingestion side: ordinary Nextcloud folders and files. Users drop PDFs, Office documents, media,
+and notes into familiar folders (here `PolyGraphRAG E2E`, `Documents`, `Templates`, …); the
+`.nc-rag-sync-health` files are the syncer's canary sentinels, which must be present for a healthy
+scan before any deletion is authorized.*
+
+<p align="center">
+  <img alt="A PolyGraphRAG workspace rendered as an interactive knowledge graph — entity nodes colored by type (agent, artifact, concept, content, method, metric, system, …) linked by extracted relationships." src="docs/images/workspace-graph.png" width="100%">
+</p>
+
+*The query side: the same documents projected into an owned PolyGraphRAG workspace as an interactive
+knowledge graph. Each node is an extracted entity — colored by type (agent, artifact, concept,
+content, method, metric, system, and more) — and edges are the relationships PolyGraphRAG mined from
+the source files, retrievable alongside vector embeddings over HTTP.*
+
 ---
 
 ## 🔀🤖 The sync layer for n8n workflows and AI agents
